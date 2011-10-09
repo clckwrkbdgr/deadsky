@@ -28,9 +28,9 @@ class Background:
 	def move_down(self, amount):
 		""" Moves every star down with _amount_ of pixels. """
 		new_stars = []
-		for star in self.stars:
-			if star[1] + amount <= self.height:
-				new_stars.append((star[0], star[1] + amount))
+		for x, y in self.stars:
+			if y + amount <= self.height:
+				new_stars.append((x, y + amount))
 			else:
 				new_stars.append([random.randrange(self.width), 0])
 		self.stars = new_stars
@@ -106,56 +106,42 @@ class Level:
 		self.player = objects.PlayerShip(sprites.PLAYER_SPRITE, view_rect.center, PLAYER_SIZE, controller.PlayerController(), PLAYER_RELOAD_TIME, PLAYER_HEALTH)
 		self.objects = [self.player]
 
+		random_x = lambda: random.randrange(ENEMY_SIZE, view_rect.width - ENEMY_SIZE)
 		self.queue = []
 		for i in xrange(ENEMY_GROUP_COUNT):
-			# pawn, scout, pendulum, hunter
-			move_temper = controller.PawnMoveTemper()
-			dice = random.random()
-			if PROB_SCOUT > dice:
-				move_temper = controller.ScoutMoveTemper()
-			elif PROB_PENDULUM > dice - PROB_SCOUT:
-				movement_range = (random.randrange(ENEMY_SIZE, view_rect.width - ENEMY_SIZE), random.randrange(ENEMY_SIZE, view_rect.width - ENEMY_SIZE))
-				move_temper = controller.PendulumMoveTemper(movement_range)
-			elif PROB_HUNTER > dice - PROB_SCOUT - PROB_PENDULUM:
-				move_temper = controller.HunterMoveTemper(self.player)
-			elif PROB_PAWN > dice - PROB_SCOUT - PROB_PENDULUM - PROB_HUNTER:
-				move_temper = controller.PawnMoveTemper()
+			move_temper = get_prob_cause({
+				"PROB_SCOUT":    lambda: controller.ScoutMoveTemper(),
+				"PROB_PENDULUM": lambda: controller.PendulumMoveTemper((random_x(), random_x())),
+				"PROB_HUNTER":   lambda: controller.HunterMoveTemper(self.player),
+				"PROB_PAWN":     lambda: controller.PawnMoveTemper()
+				}, lambda: controller.PawnMoveTemper())
 
-			# (0, 0), (3, 1), (3, 3)
-			shoot_temper = controller.ShootTemper(0, 0)
-			dice = random.random()
-			if PROB_SNIPER > dice:
-				shoot_temper = controller.ShootTemper(3, 1)
-			elif PROB_GUNNER > dice - PROB_SNIPER:
-				shoot_temper = controller.ShootTemper(3, 3)
-			elif PROB_NO_SHOOT > dice - PROB_SNIPER - PROB_GUNNER:
-				shoot_temper = controller.ShootTemper(0, 0)
+			shoot_temper = get_prob_cause({
+				"PROB_SNIPER"  : lambda: controller.ShootTemper(3.0, 1),
+				"PROB_GUNNER"  : lambda: controller.ShootTemper(3.0, 3),
+				"PROB_NO_SHOOT": lambda: controller.ShootTemper(0.0, 0),
+				}, lambda: controller.ShootTemper(0.0, 0))
 
-			# row, column, /, \ and random count from [1, 5]
-			shift = (0, ENEMY_DISTANCE)
-			dice = random.random()
-			if PROB_H_LINE > dice:
-				shift = (ENEMY_DISTANCE, 0)
-			elif PROB_BACKSLASH > dice - PROB_H_LINE:
-				shift = (ENEMY_DISTANCE, ENEMY_DISTANCE)
-			elif PROB_SLASH > dice - PROB_H_LINE - PROB_BACKSLASH:
-				shift = (-ENEMY_DISTANCE, ENEMY_DISTANCE)
-			elif PROB_V_LINE > dice - PROB_H_LINE - PROB_BACKSLASH - PROB_SLASH:
-				shift = (0, ENEMY_DISTANCE)
-			group_size = random.randrange(1, ENEMY_GROUP_SIZE)
-			group_width = shift[0] * (group_size - 1) + ENEMY_SIZE * 2
-			group_height = shift[1] * (group_size - 1) + ENEMY_SIZE * 2
+			shift = get_prob_cause({
+				"PROB_H_LINE":    lambda: (ENEMY_DISTANCE, 0),
+				"PROB_BACKSLASH": lambda: (ENEMY_DISTANCE, ENEMY_DISTANCE),
+				"PROB_SLASH":     lambda: (-ENEMY_DISTANCE, ENEMY_DISTANCE),
+				"PROB_V_LINE":    lambda: (0, ENEMY_DISTANCE)
+				}, lambda: (0, ENEMY_DISTANCE))
+			group_size = random.randrange(0, ENEMY_GROUP_SIZE) + 1
+			group_width = shift[0] * (group_size - 1) + math.copysign(ENEMY_SIZE * 2, shift[0])
+			group_height = shift[1] * (group_size - 1) + math.copysign(ENEMY_SIZE * 2, shift[1])
 
 			# min(start_pos, start_pos + group_width) > 0
 			# max(start_pos, start_pos + group_width) < view_rect.width
 			start_pos_x = view_rect.centerx
 			if 0 > group_width:
-				start_pos_x = random.randrange(group_width, view_rect.width)
+				start_pos_x = random.randrange(ENEMY_SIZE - group_width, view_rect.width - ENEMY_SIZE)
 			if 0 < group_width:
-				start_pos_x = random.randrange(0, view_rect.width - group_width)
+				start_pos_x = random.randrange(ENEMY_SIZE, view_rect.width - group_width - ENEMY_SIZE)
 			start_pos_y = self.length / 2
 			if 0 < group_height:
-				start_pos_y = random.randrange(view_rect.height / 2 + group_height, self.length)
+				start_pos_y = random.randrange(view_rect.height / 2 - group_height, self.length)
 			if 0 > group_height:
 				start_pos_y = random.randrange(view_rect.height / 2, self.length - group_height)
 
@@ -226,19 +212,17 @@ def main():
 		background.update(sec)
 		if label: label.update(sec)
 
-		created_objects = []
-		for o in level.objects:
-			colliding_objects = [other for other in level.objects if other != o and objects_colliding(o, other)]
-			created_objects.extend(o.collide(colliding_objects))
-		for o in level.objects:
-			created_objects.extend(o.update(sec))
+		created_objects = reduce(lambda a, b: a + b,
+				map(lambda o: o.collide([other for other in level.objects if other != o and objects_colliding(o, other)]), level.objects) +
+				map(lambda o: o.update(sec), level.objects)
+				)
 		level.objects[0:0] = created_objects
 
 		if not level.player.is_alive() and label == None:
 			label = Label(LOSE_TEXT, TEXT_DELAY, close_after=True)
 
 		level.objects = [o for o in level.objects if o.is_alive()]
-		if len([o for o in level.objects if isinstance(o, objects.EnemyShip) and o.get_rect().bottom > screen.get_rect().bottom]) > 0:
+		if [o for o in level.objects if isinstance(o, objects.EnemyShip) and o.get_rect().bottom > screen.get_rect().bottom]:
 			level.player.health = 0
 		level.objects = [o for o in level.objects if screen.get_rect().colliderect(o.get_rect())]
 

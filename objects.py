@@ -69,13 +69,15 @@ class Bonus(Object):
 		return Object.update(self, sec)
 
 	def collide(self, collidees):
-		for other in collidees:
-			if isinstance(other, PlayerShip):
-				self.exists = False
+		if [other for other in collidees if isinstance(other, PlayerShip)]:
+			self.exists = False
 		return []
 
-class WeaponBonus(Bonus): pass
-class HealthBonus(Bonus): pass
+class WeaponBonus(Bonus):
+	pass
+
+class HealthBonus(Bonus):
+	pass
 
 class Ship(Object):
 	""" Base class for ships. """
@@ -125,11 +127,12 @@ class Ship(Object):
 class Bullet(Object):
 	""" Base bullet. Just flies, doesn't collide with objects. """
 
-	def __init__(self, sprite, pos, radius, velocity):
+	def __init__(self, sprite, pos, radius, velocity, foe_class = None):
 		""" Velocity is a direction vector. """
 		Object.__init__(self, sprite, pos, radius)
 		self.velocity = velocity
 		self.exists = True
+		self.foe_class = foe_class
 	
 	def is_alive(self):
 		return self.exists
@@ -138,19 +141,18 @@ class Bullet(Object):
 		self.move((self.velocity[0] * sec, self.velocity[1] * sec))
 		return Object.update(self, sec)
 
-class PlayerBullet(Bullet):
 	def collide(self, collidees):
-		for other in collidees:
-			if isinstance(other, EnemyShip):
-				self.exists = False
+		if [other for other in collidees if isinstance(other, self.foe_class)]:
+			self.exists = False
 		return []
 
+class PlayerBullet(Bullet):
+	def __init__(self, sprite, pos, radius, velocity):
+		Bullet.__init__(self, sprite, pos, radius, velocity, EnemyShip)
+
 class EnemyBullet(Bullet):
-	def collide(self, collidees):
-		for other in collidees:
-			if isinstance(other, PlayerShip):
-				self.exists = False
-		return []
+	def __init__(self, sprite, pos, radius, velocity):
+		Bullet.__init__(self, sprite, pos, radius, velocity, PlayerShip)
 
 class EnemyShip(Ship):
 	""" Defines common enemy ship. """
@@ -165,10 +167,12 @@ class EnemyShip(Ship):
 	def update(self, sec):
 		created_objects = Ship.update(self, sec)
 		if not self.is_alive():
-			if PROB_CREATE_WEAPON_BONUS > random.random():
-				created_objects.append(WeaponBonus(sprites.WEAPON_BONUS_SPRITE, self.pos, BONUS_SIZE))
-			elif PROB_CREATE_WEAPON_BONUS + PROB_CREATE_HEALTH_BONUS > random.random():
-				created_objects.append(HealthBonus(sprites.HEALTH_BONUS_SPRITE, self.pos, BONUS_SIZE))
+			new_bonus = get_prob_cause({
+				"PROB_CREATE_WEAPON_BONUS": lambda: WeaponBonus(sprites.WEAPON_BONUS_SPRITE, self.pos, BONUS_SIZE),
+				"PROB_CREATE_HEALTH_BONUS": lambda: HealthBonus(sprites.HEALTH_BONUS_SPRITE, self.pos, BONUS_SIZE)
+				}, lambda: None)
+			if new_bonus:
+				created_objects.append(new_bonus)
 		return created_objects
 
 	def shoot(self):

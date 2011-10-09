@@ -5,6 +5,7 @@
 # Global definitions for the game.
 
 import math
+import random
 
 HEALTHBAR_COLOR = (255, 255, 255)
 SCREEN_SIZE = (800, 600)
@@ -42,22 +43,24 @@ ENEMY_GROUP_COUNT = 40
 ENEMY_GROUP_SIZE = 10
 ENEMY_DISTANCE = 48
 
-PROB_CREATE_WEAPON_BONUS = 0.25
-PROB_CREATE_HEALTH_BONUS = 0.25
+probs = {
+		"PROB_CREATE_WEAPON_BONUS": 0.25,
+		"PROB_CREATE_HEALTH_BONUS": 0.25,
 
-PROB_SCOUT = 0.24
-PROB_PENDULUM = 0.245
-PROB_HUNTER = 0.243
-PROB_PAWN = 0.242
+		"PROB_SCOUT": 0.25,
+		"PROB_PENDULUM": 0.25,
+		"PROB_HUNTER": 0.25,
+		"PROB_PAWN": 0.25,
 
-PROB_SNIPER = 0.33
-PROB_GUNNER = 0.33
-PROB_NO_SHOOT = 0.33
+		"PROB_SNIPER": 0.33,
+		"PROB_GUNNER": 0.33,
+		"PROB_NO_SHOOT": 0.33,
 
-PROB_H_LINE = 0.24
-PROB_V_LINE = 0.245
-PROB_SLASH = 0.243
-PROB_BACKSLASH = 0.242
+		"PROB_H_LINE": 0.25,
+		"PROB_V_LINE": 0.25,
+		"PROB_SLASH": 0.25,
+		"PROB_BACKSLASH": 0.25
+		}
 
 def objects_colliding(first, second):
 	result = math.hypot(first.pos[0] - second.pos[0], first.pos[1] - second.pos[1]) < (first.radius + second.radius)
@@ -70,4 +73,13 @@ def ensure_range(x, x_range):
 	if x > right:
 		return right
 	return x
+
+def get_prob_cause(prob_map, default_builder):
+	dice = random.random()
+	cur_prob = 0.0
+	for prob in prob_map:
+		cur_prob += probs[prob]
+		if cur_prob > dice:
+			return prob_map[prob]()
+	return default_builder()
 
