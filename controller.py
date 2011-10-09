@@ -113,7 +113,7 @@ class ShootTemper:
 				self.current_group_delay = self.group_delay
 
 	def want_to_shoot(self):
-		return (self.group_count <= 0) and (self.current_group_delay <= 0)
+		return (self.group_count > 0) and (self.current_group_delay <= 0)
 
 	def update(self, sec):
 		""" Wait until wanted to shoot. """
