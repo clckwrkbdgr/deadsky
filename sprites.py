@@ -16,36 +16,33 @@ def player_sprite():
 	sprite.set_colorkey((255, 0, 255))
 	pixels = pygame.PixelArray(sprite)
 
-	for p in [(0, 9), (1, 7), (3, 6), (5, 4), (6, 2), (6, 13), (5, 14)]:
-		pixels[p[0]][p[1]] = 0x303030
+	colors = [0xaaffff, 0x00ffff, 0x008fff, 0x0000ff]
+	size = 4
+	size2 = size * 2
+	start_x, start_y = size / 2, 0
 
-	l = [(0, 8), (2, 7), (4, 6), (5, 5), (6, 3)]
-	l.extend([(1 + x, 10 + x) for x in range(4)])
-	for p in l: pixels[p[0]][p[1]] = 0x5c5c5c
+	quad = lambda points: reduce(lambda a, b: a + b, [[(x, y), (x, size2 - y), (size2 - x, y), (size2 - x, size2 - y)] for x, y in points])
+	shift_points = lambda p, shift_x, shift_y: (p[0] + shift_x, p[1] + shift_y)
+	def generate_number(number, l):
+		for i in l: yield number
+	element = lambda shift_x, shift_y, points: map(shift_points, points, generate_number(shift_x, points), generate_number(shift_y, points))
+	emblem = lambda points: element(start_x, start_y, points) + \
+			element(start_x +      size - 1,  start_y +      size - 1,  points) + \
+			element(start_x + 2 * (size - 1), start_y + 2 * (size - 1), points) + \
+			element(start_x -     (size - 1), start_y +      size - 1,  points) + \
+			element(start_x -     (size - 1), start_y + 3 * (size - 1), points)
 
-	l = [(1+x, 9+x) for x in range(5)]
-	l.extend([(6, 5), (6, 4), (7, 2), (7, 1)])
-	l.extend([(2+x*2, 8-x) for x in range(3)])
-	l.extend([(1+x*2, 8-x) for x in range(3)])
-	for p in l: pixels[p[0]][p[1]] = 0x808080
+	colored_points = {}
+	for m in range(1, 1 + size):
+		points = [((size - m) + x + 1, (size - m) + m - x) for x in range(m)]
+		if points:
+			print m - 1, len(colors)
+			colored_points[colors[m - 1]] = points
+	print colored_points
 
-	for p in [(3, 8), (5, 7), (6, 6), (7, 10), (7, 12)]: pixels[p[0]][p[1]] = 0xa0a0a0
-
-	l = [(3+x,9+x) for x in range(3)]
-	l.extend([(4+x,9+x) for x in range(3)])
-	l.extend([(7, 6), (7, 7), (6, 8), (7, 9)])
-	for p in l: pixels[p[0]][p[1]] = 0xc0c0c0
-
-	for p in [(6, 7), (7, 8)]: pixels[p[0]][p[1]] = 0x0000ff
-
-	l = [(7,3+x) for x in range(3)]
-	l.extend([(4+x,8+x) for x in range(4)])
-	l.extend([(2+x,9+x) for x in range(4)])
-	l.extend([(5,8), (6,9), (2,10), (3,11), (6,12)])
-	for p in l: pixels[p[0]][p[1]] = 0x0000ff
-
-	for x in range(8):
-		pixels[15 - x] = pixels[x]
+	for color in colored_points:
+		for x, y in emblem(quad(colored_points[color])):
+			pixels[x][y] = color
 
 	return sprite
 
