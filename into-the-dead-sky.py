@@ -23,16 +23,16 @@ class Background:
 	def __init__(self, size, count):
 		""" Creates a background for screen with _size_ and fills it with _count_ of stars. """
 		self.width, self.height = size
-		self.stars = [(random.randrange(self.width), random.randrange(self.height)) for i in xrange(count)]
+		self.stars = [(random.randrange(self.width), random.randrange(self.height), (random.randrange(2) == 0)) for i in xrange(count)]
 
 	def move_down(self, amount):
 		""" Moves every star down with _amount_ of pixels. """
 		new_stars = []
-		for x, y in self.stars:
-			if y + amount <= self.height:
-				new_stars.append((x, y + amount))
+		for x, y, pattern in self.stars:
+			if y + amount + sprites.DIGIT_PATTERN_SIZE[1] <= self.height:
+				new_stars.append((x, y + amount, pattern))
 			else:
-				new_stars.append([random.randrange(self.width), 0])
+				new_stars.append((random.randrange(self.width), 0, pattern))
 		self.stars = new_stars
 
 	def update(self, sec):
@@ -61,12 +61,12 @@ class Painter:
 	def draw_background(self, screen, background):
 		""" Clears screen before rendering of background so it should be first in a queue. """
 		screen.fill(BACK_COLOR)
-		for star in background.stars:
-			screen.set_at((int(star[0]), int(star[1])), STAR_COLOR)
+		for x, y, pattern in background.stars:
+			screen.blit(sprites.DIGIT_SPRITE[pattern], (x, y))
 	
 	def draw_label(self, screen, label):
 		""" Draws a big label on the screen centered. """
-		font = pygame.font.Font(None, 32)
+		font = pygame.font.Font(None, FONT_SIZE)
 		sprite = font.render(label.text, True, TEXT_COLOR)
 		textpos = sprite.get_rect(centerx=screen.get_rect().centerx, centery=screen.get_rect().centery)
 		screen.blit(sprite, textpos)

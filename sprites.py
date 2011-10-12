@@ -10,16 +10,33 @@ import math
 
 from defs import *
 
-def player_sprite():
-	sprite = pygame.Surface((16, 16), pygame.HWSURFACE)
+DIGIT_PATTERN_SIZE = (3, 4)
+digit_patterns = { False: [(0, 0), (1, 0), (2, 0), (0, 1), (2, 1), (0, 2), (2, 2), (0, 3), (1, 3), (2, 3)],
+			True: [(1, 0), (1, 1), (1, 2), (1, 3), (0, 1)] }
+
+def digit_sprite(digit):
+	sprite = pygame.Surface(DIGIT_PATTERN_SIZE, pygame.HWSURFACE)
 	sprite.fill((255, 0, 255))
 	sprite.set_colorkey((255, 0, 255))
 	pixels = pygame.PixelArray(sprite)
 
-	colors = [0xaaffff, 0x00ffff, 0x008fff, 0x0000ff]
-	size = 4
+	for x, y in digit_patterns[digit]:
+		pixels[x][y] = STAR_COLOR
+
+	return sprite
+
+def player_sprite():
+	sprite_size = 16
+	colors = [0x0000ff, 0x0000ff, 0x3f3f3f, 0x8f8f8f]
+
+	sprite = pygame.Surface((sprite_size, sprite_size), pygame.HWSURFACE)
+	sprite.fill((255, 0, 255))
+	sprite.set_colorkey((255, 0, 255))
+	pixels = pygame.PixelArray(sprite)
+
+	size = (sprite_size - 1) / 5 + 1
 	size2 = size * 2
-	start_x, start_y = size / 2, 0
+	start_x, start_y = size / 2, -1
 
 	quad = lambda points: reduce(lambda a, b: a + b, [[(x, y), (x, size2 - y), (size2 - x, y), (size2 - x, size2 - y)] for x, y in points])
 	shift_points = lambda p, shift_x, shift_y: (p[0] + shift_x, p[1] + shift_y)
@@ -36,13 +53,47 @@ def player_sprite():
 	for m in range(1, 1 + size):
 		points = [((size - m) + x + 1, (size - m) + m - x) for x in range(m)]
 		if points:
-			print m - 1, len(colors)
-			colored_points[colors[m - 1]] = points
-	print colored_points
+			color = colors[0]
+			if m - 1 < len(colors):
+				color = colors[m - 1]
+
+			if color in colored_points:
+				colored_points[color] += points
+			else:
+				colored_points[color] = points
 
 	for color in colored_points:
 		for x, y in emblem(quad(colored_points[color])):
 			pixels[x][y] = color
+
+	return sprite
+
+def explode_sprite():
+	sprite_size = 24
+
+	sprite = pygame.Surface((sprite_size, sprite_size), pygame.HWSURFACE)
+	sprite.fill((255, 0, 255))
+	sprite.set_colorkey((255, 0, 255))
+	pixels = pygame.PixelArray(sprite)
+
+	half_size = sprite_size / 2
+	digit_count = sprite_size
+
+	digits = []
+	for i in range(digit_count):
+		x = random.randrange(sprite_size - DIGIT_PATTERN_SIZE[0])
+		y = random.randrange(sprite_size - DIGIT_PATTERN_SIZE[1])
+		if math.hypot(x - half_size, y - half_size) > half_size:
+			continue
+		r = random.randrange(128)
+		pattern = (random.randrange(2) == 0)
+		digits.append((x, y, r, pattern))
+
+	digits.sort(lambda x, y: -1 if x[2] < y[2] else (1 if x[2] > y[2] else 0))
+
+	for x, y, color, pattern in digits:
+		for shift_x, shift_y in digit_patterns[pattern]:
+			pixels[x + shift_x][y + shift_y] = (color, color, color)
 
 	return sprite
 
@@ -144,22 +195,6 @@ def enemy_sprite():
 
 	return sprite
 
-def explode_sprite():
-	sprite = pygame.Surface((24, 24), pygame.HWSURFACE)
-	sprite.fill((255, 0, 255))
-	sprite.set_colorkey((255, 0, 255))
-	pixels = pygame.PixelArray(sprite)
-
-	for i in range(300):
-		x = random.randrange(24)
-		y = random.randrange(24)
-		if math.hypot(x-12, y-12) > 12:
-			continue
-		r = random.randrange(128)
-		pixels[x][y] = (r, r, r)
-
-	return sprite
-
 def health_bonus_sprite():
 	sprite = pygame.Surface((16, 16), pygame.HWSURFACE)
 	sprite.fill((255, 0, 255))
@@ -226,3 +261,7 @@ ENEMY_SPRITE         = pygame.transform.scale(enemy_sprite(),         (ENEMY_SIZ
 EXPLODE_SPRITE       = pygame.transform.scale(explode_sprite(),       (EXPLODE_SIZE * 2, EXPLODE_SIZE * 2))
 HEALTH_BONUS_SPRITE  = pygame.transform.scale(health_bonus_sprite(),  (BONUS_SIZE * 2,   BONUS_SIZE * 2))
 WEAPON_BONUS_SPRITE  = pygame.transform.scale(weapon_bonus_sprite(),  (BONUS_SIZE * 2,   BONUS_SIZE * 2))
+
+DIGIT_SPRITE = {}
+for digit in digit_patterns:
+	DIGIT_SPRITE[digit] = pygame.transform.scale(digit_sprite(digit), (DIGIT_PATTERN_SIZE[0] * 2, DIGIT_PATTERN_SIZE[0] * 2))
