@@ -141,9 +141,9 @@ class Level:
 				start_pos_x = random.randrange(ENEMY_SIZE, view_rect.width - group_width - ENEMY_SIZE)
 			start_pos_y = self.length / 2
 			if 0 < group_height:
-				start_pos_y = random.randrange(view_rect.height / 2 - group_height, self.length)
+				start_pos_y = random.randrange(view_rect.height / 2 - group_height, self.length - view_rect.height)
 			if 0 > group_height:
-				start_pos_y = random.randrange(view_rect.height / 2, self.length - group_height)
+				start_pos_y = random.randrange(view_rect.height / 2, self.length - view_rect.height - group_height)
 
 			positions = [(start_pos_x + shift[0] * i, start_pos_y + shift[1] * i) for i in xrange(group_size)]
 
@@ -152,7 +152,7 @@ class Level:
 				enemy = objects.EnemyShip(sprites.ENEMY_SPRITE, pos, ENEMY_SIZE, ai, ENEMY_RELOAD_TIME)
 				self.queue.append(enemy)
 
-		self.length += view_rect.height * 2
+		self.length += view_rect.height / 2
 
 	def is_ended_up(self):
 		return self.length <= 0
