@@ -77,7 +77,7 @@ class Painter:
 			ind_rect = rect.inflate(-4, -4)
 			ind_rect.width = ind_rect.width * player.health / player.max_health
 
-			if player.health * 2 < player.max_health:
+			if player.health < player.max_health / 2:
 				i = 255 * 2 * player.health / player.max_health
 				color = (255, i, 0)
 			else:
@@ -129,7 +129,7 @@ class Level:
 				"PROB_V_LINE":    lambda: (0, ENEMY_DISTANCE)
 				}, lambda: (0, ENEMY_DISTANCE))
 			group_size = random.randrange(0, ENEMY_GROUP_SIZE) + 1
-			group_width = shift[0] * (group_size - 1) + math.copysign(ENEMY_SIZE * 2, shift[0])
+			group_width  = shift[0] * (group_size - 1) + math.copysign(ENEMY_SIZE * 2, shift[0])
 			group_height = shift[1] * (group_size - 1) + math.copysign(ENEMY_SIZE * 2, shift[1])
 
 			# min(start_pos, start_pos + group_width) > 0
@@ -152,7 +152,7 @@ class Level:
 				enemy = objects.EnemyShip(sprites.ENEMY_SPRITE, pos, ENEMY_SIZE, ai, ENEMY_RELOAD_TIME)
 				self.queue.append(enemy)
 
-		self.length = length + view_rect.height
+		self.length += view_rect.height * 2
 
 	def is_ended_up(self):
 		return self.length <= 0
